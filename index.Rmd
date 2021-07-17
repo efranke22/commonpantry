@@ -1,0 +1,21 @@
+---
+title: "Common Pantry Van Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)#, #message = FALSE, #warning = FALSE)
+```
+
+```{r libraries, echo=FALSE}
+library(tidyverse)
+library(readxl)
+vans <- read_xlsx("cpvandata.xlsx")
+```
+
+```{r cleaning, echo=FALSE}
+vans <- vans %>%
+  mutate(Latitude = case_when(Location == "Garage" ~ 41.9508)) %>%
+  mutate(Longitude = case_when(Location == "Garage" ~ -87.6809))
+```
+
