@@ -4,13 +4,13 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)#, #message = FALSE, #warning = FALSE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
 ```{r libraries, echo=FALSE}
 library(tidyverse)
 library(readxl)
-vans <- read_xlsx("cpvandata.xlsx")
+vans <- read_xlsx("../cpvandata.xlsx")
 ```
 
 ```{r cleaning, echo=FALSE}
