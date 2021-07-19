@@ -15,7 +15,56 @@ vans <- read_xlsx("cpvandata.xlsx")
 
 ```{r cleaning, echo=FALSE}
 vans <- vans %>%
-  mutate(Latitude = case_when(Location == "Garage" ~ 41.9508)) %>%
-  mutate(Longitude = case_when(Location == "Garage" ~ -87.6809))
+  mutate(Location = recode(Location, "Lincoln Jewel Osco" = "Jewel", "Jewel Osco" = "Jewel"), 
+    Latitude = case_when(
+    Location == "Garage" ~ 41.9508, 
+    Location == "Pantry" ~ 41.95019, 
+    Location == "Harvestime" ~ 41.96897,
+    Location == "Aldi" ~ 41.9611, 
+    Location == "Tiny Giants" ~ 41.96678, 
+    Location == "First Slice" ~ 41.9618, 
+    Location == "Jewel" ~ 41.9585, 
+    Location == "Restaurant Depot" ~ 41.98716, 
+    Location == "Gas Station" ~ 41.96132, 
+    Location == "Ace Hardware" ~ 41.9527, 
+    Location == "Salvation Army" ~ 41.92317, 
+    Location == "Daily Harvest" ~ 41.9193, 
+    Location == "Cradles 2 Crayons" ~ 41.93399, 
+    Location == "Staples" ~ 41.96598, 
+    Location == "Volo Restaurant" ~ 41.94325, 
+    Location == "Share Our Spare" ~ 41.9494, 
+    Location == "Ravenswood Elementary" ~ 41.9615,
+    Location == "WCC - Winnetka" ~ 42.1123,
+    Location== "Chui's Grocery" ~ 41.97129, 
+    Location == "Friendship Center" ~ 41.9682, 
+    Location == "RCS" ~ 41.965099, 
+    Location == "Concordia" ~ 41.95216, 
+    Location == "Swedish" ~ 41.975348, 
+    Location == "MMCG" ~ 41.96211), 
+      Longitude = case_when(
+    Location == "Garage" ~ -87.6809, 
+    Location == "Pantry" ~ -87.67845, 
+    Location == "Harvestime" ~ -87.69502,
+    Location == "Aldi" ~ -87.6894, 
+    Location == "Tiny Giants" ~ -87.66736,
+    Location == "First Slice" ~ -87.67353, 
+    Location == "Jewel" ~ -87.68144, 
+    Location == "Restaurant Depot" ~ -87.735429, 
+    Location == "Gas Station" ~ 87.68889, 
+    Location == "Ace Hardware" ~ -87.6768, 
+    Location == "Salvation Army" ~ -87.6629, 
+    Location == "Daily Harvest" ~ -87.64809, 
+    Location == "Cradles 2 Crayons" ~ -87.734218, 
+    Location == "Staples" ~ -87.6665, 
+    Location == "Volo Restaurant" ~ -87.679655, 
+    Location == "Share Our Spare" ~ -87.74516, 
+    Location == "Ravenswood Elementary" ~ -87.671397, 
+    Location == "WCC - Winnetka" ~ -87.73096, 
+    Location == "Chui's Grocery" ~ -87.6773, 
+    Location == "Friendship Center" ~ -87.70027, 
+    Location == "RCS" ~ -87.67018,
+    Location == "Concordia" ~ -87.679039, 
+    Location == "Swedish" ~ -87.700307, 
+    Location == "MMCG" ~ -87.67432))
 ```
 
