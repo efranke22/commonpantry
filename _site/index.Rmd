@@ -1,6 +1,9 @@
 ---
-title: "Common Pantry Van Analysis"
+title: "<span style='color:forestgreen'> Common Pantry Van Analysis <span>"
 output: html_document
+header-includes:
+    - \usepackage{sectsty}
+    - \allsectionsfont{\color{forestgreen}}
 ---
 
 ```{r setup, include=FALSE}
@@ -10,12 +13,71 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```{r libraries, echo=FALSE}
 library(tidyverse)
 library(readxl)
+library(ggthemes)
+library(ggtext)
+library(janitor)
+library(gt)
 vans <- read_xlsx("../cpvandata.xlsx")
+
+hsv2rgb <- function(x){  
+  # convert an hsv colour to rgb  
+  # input:  a 3 x 1 matrix (same as output of rgb2hsv() function)  
+  # output: vector of length 3 with values in [0,1]    
+
+  # recover h, s, v values  
+  h <- x[1,1]  
+  s <- x[2,1]  
+  v <- x[3,1]    
+
+  # follow the algorithm from Wikipedia  
+  C <- s*v   
+
+  # in R, h takes values in [0,1] rather than [0, 360], so dividing by  
+  # 60 degrees is the same as multiplying by six  
+  hdash <- h*6  
+  X <- C * (1 - abs(hdash %% 2 -1))
+  
+   if (0 <= hdash & hdash <=1) RGB1 <- c(C, X, 0)  
+   if (1 <= hdash & hdash <=2) RGB1 <- c(X, C, 0)  
+   if (2 <= hdash & hdash <=3) RGB1 <- c(0, C, X)  
+   if (3 <= hdash & hdash <=4) RGB1 <- c(0, X, C)  
+   if (4 <= hdash & hdash <=5) RGB1 <- c(X, 0, C)  
+   if (5 <= hdash & hdash <=6) RGB1 <- c(C, 0, X)    
+ 
+   # the output is a vector of length 3. This is the most convenient  
+   # format for using as the col argument in an R plotting function  
+   RGB1 + (v-C)
+ }
+ 
+ pastellize <- function(x, p){
+  
+  # x is a colour
+  # p is a number in [0,1]
+  # p = 1 will give no pastellization
+  
+  # convert hex or letter names to rgb
+  if (is.character(x)) x <- col2rgb(x)/255
+  
+  # convert vector to rgb
+  if (is.numeric(x)) x <- matrix(x, nr=3)
+  
+  col <- rgb2hsv(x, maxColorValue=1)
+  col[2,1] <- col[2,1]*p
+  col <- hsv2rgb(col)
+  
+  # return in convenient format for plots
+  rgb(col[1], col[2], col[3])
+ }
+ 
+ pastel_green <- pastellize("palegreen3", 0.6)
+ pastel_darker <-  pastellize("palegreen1", 0.4)
 ```
 
 ```{r cleaning, echo=FALSE}
+#and latitude and longitude to locations
 vans <- vans %>%
-  mutate(Location = recode(Location, "Lincoln Jewel Osco" = "Jewel", "Jewel Osco" = "Jewel"), 
+  mutate(Location = recode(Location, "Lincoln Jewel Osco" = "Jewel", "Jewel Osco" = "Jewel"),
+         `Prior Location` = recode(`Prior Location`, "Lincoln Jewel Osco" = "Jewel", "Jewel Osco" = "Jewel"),
     Latitude = case_when(
     Location == "Garage" ~ 41.9508, 
     Location == "Pantry" ~ 41.95019, 
@@ -66,5 +128,179 @@ vans <- vans %>%
     Location == "Concordia" ~ -87.679039, 
     Location == "Swedish" ~ -87.700307, 
     Location == "MMCG" ~ -87.67432))
+
+#extract the month of each van trip into new variable "month"
+vans$month <- format(vans$Date, "%m")
+
+#recode to make the months labeled as names and not numbers, order in the appropriate sequence
+vans <- vans %>%
+  mutate(month = as.character(month), 
+         month = recode(month, "11" = "November", "12" = "December", "01" = "January", "02" = "February", "03" = "March", "04" = "April", "05" = "May", "06" = "June", "07" = "July"))
+vans$month = factor(vans$month, levels=c("November","December","January", "February", "March", "April", "May", "June", "July"), labels=c("November","December","January", "February", "March", "April", "May", "June", "July"))
+```
+
+<span style='color:forestgreen; font-size:150%; font-weight:600'> Common Pantry Van Miles per Month <span>
+
+Common Pantry's van traveled the most miles in **March** and **May 2021** with over 100 miles each month. **35.5** of the **101.9** miles in March came from a trip to and from **Winnetka Congregational Church** for a donation pickup. **73.1** of the **118.5** miles driven in May resulted from traveling to and from **Matteson Prairie**. 
+
+```{r, echo = FALSE}
+vans %>%
+  filter(Date <= "2021-06-30") %>%
+  group_by(month)%>%
+  summarize(miles_driven = round(sum(Distance, na.rm = TRUE), 1)) %>% #mean miles: 75.38
+  ggplot(aes(x=month, y=miles_driven)) +
+  geom_col(fill = "forestgreen")+
+  geom_text(aes(label = miles_driven), size = 3, hjust = 0.5, vjust = 3, position = "stack", color = "white")+
+  labs(x = "", y = "", title = "")+
+  theme_minimal()+
+  theme(plot.title.position = "plot", 
+        plot.title = element_markdown(family = "mono", face = "bold", size = 14, color = "forestgreen"), 
+        panel.grid.major.x = element_blank(), 
+        panel.grid.minor.x = element_blank()) +
+  annotate(geom="text",x="December", y=110,label="average mileage \nper month: 75.38", family = "mono", fontface="bold", cex = 3.5, color = "forestgreen")
+
+#sum(vans$Distance, na.rm = TRUE)
+```
+
+Without the trips to WCC and Matteson Prairie, the distribution of miles driven per month is adjusted below.
+
+```{r, echo = FALSE}
+vans %>%
+  filter(Date <= "2021-06-30", 
+         Location != "Matteson Prairie", 
+         `Prior Location` != "Matteson Prairie", 
+         Location != "WCC", 
+         `Prior Location` != "WCC - Winnetka") %>%
+  group_by(month)%>%
+  summarize(miles_driven = round(sum(Distance, na.rm = TRUE), 1)) %>% #mean miles: 64.08
+  ggplot(aes(x=month, y=miles_driven)) +
+  geom_col(fill = "forestgreen")+
+  geom_text(aes(label = miles_driven), size = 3, hjust = 0.5, vjust = 3, position = "stack", color = "white")+
+  labs(x = "", y = "", title = "")+
+  theme_minimal()+
+  theme(plot.title.position = "plot", 
+        plot.title = element_markdown(family = "mono", face = "bold", size = 14, color = "forestgreen"), 
+        panel.grid.major.x = element_blank(), 
+        panel.grid.minor.x = element_blank()) +
+  annotate(geom="text",x="May", y=77,label="average mileage \nper month: 64.08", family = "mono", fontface="bold", cex = 3.5, color = "forestgreen")
+```
+
+<span style='color:forestgreen; font-size:150%; font-weight:600'> Van Total Mileage <span>
+
+```{r, include = FALSE}
+#van mileage
+vans %>%
+  summarize(sum(Distance, na.rm = TRUE))
+
+#van mileage - July
+vans %>%
+  filter(month !="July") %>%
+  summarize(sum(Distance, na.rm = TRUE))
+```
+
+Between **November 2020** and **July 8, 2021**, the Common Pantry van has been driven **620.8** miles (and there are **1791.7** miles on the van total). 
+Excluding the eight days in July, the van has been driven **603** miles. 
+
+<span style='color:forestgreen; font-size:150%; font-weight:600'> Mileage Breakdown <span>
+
+We break down these miles into the following categories in the table below: 
+
+```{r, echo = FALSE}
+'%!in%' <- Negate('%in%')
+
+#grocery miles - 216.7 miles
+to_from_grocery <- vans %>%
+  filter(Location %in% c("Harvestime", "Aldi", "Jewel", "Gas Station", "Whole Foods")| 
+         `Prior Location` %in% c("Harvestime", "Aldi", "Jewel", "Gas Station", "Whole Foods")) %>%
+  filter(`Prior Location` != "Restaurant Depot",  
+           Location != "Staples", 
+         Location != "RCS", 
+         `Prior Location` != "Donor House", 
+         `Prior Location` != "MMCG", 
+         `Van Mileage` != 1186.4)
+
+grocery_miles_monthly <- to_from_grocery %>%
+  filter(month != "July") %>%
+  group_by(month) %>%
+  summarize(grocery_miles = sum(Distance))
+
+#miles too and from donor houses/to pick up donations and our products (lunch for volunteers, pies for clients, etc)
+donor_houses <- vans %>% anti_join(to_from_grocery) %>%
+  filter(Location %in% c("Donor House", "Tiny Giants", "Ravenswood Elementary", "WCC - Winnetka", "Chui's Grocery", "Cradles 2 Crayons", "Daily Harvest", "First Slice", "Restaurant Depot", "Restaurant", "Volo Restaurant", "Share Our Spare", "MMCG") |  `Prior Location` %in% c("Donor House", "Daily Harvest", "Cradles 2 Crayons", "Ravenswood Elementary", "WCC - Winnetka", "Chui's Grocery", "First Slice", "Restaurant Depot", "Restaurant", "Volo Restaurant", "Share Our Spare", "MMCG"))
+
+donor_miles_monthly <- donor_houses %>%
+  filter(month != "July") %>%
+  group_by(month) %>%
+  summarize(donor_miles = sum(Distance))
+
+#miles to drop of donations
+drop_donations <- vans %>% 
+  anti_join(to_from_grocery) %>% 
+  anti_join(donor_houses) %>%
+  filter(Location %in% c("Salvation Army", "Friendship Center", "RCS", "Concordia", "Swedish")| 
+         `Prior Location` %in% c("Salvation Army", "Friendship Center", "RCS", "Concordia", "Swedish"))
+
+dropping_donations_monthly <- drop_donations %>%
+  filter(month != "July") %>%
+  group_by(month) %>%
+  summarize(dropping_miles = sum(Distance))
+
+#random/unknown miles
+random_miles <- vans %>%
+  anti_join(to_from_grocery) %>%
+  anti_join(donor_houses) %>%
+  anti_join(drop_donations) %>%
+  filter(`Van Mileage` == 1186.4|
+         `Prior Location` %in% c("Ace Hardware", "Staples", "Unknown", "Ravenswood Chamber", "Matteson Prairie", "Car Wash")| 
+         Location %in% c("Staples", "Ace Hardware", "Unknown", "Ravenswood Chamber", "Matteson Prairie", "Car Wash"))
+
+random_monthly <- random_miles %>%
+  filter(month != "July") %>%
+  group_by(month) %>%
+  summarize(random_miles = sum(Distance))
+
+#between garage and pantry
+garage_pantry_miles <- vans %>%
+  anti_join(to_from_grocery) %>%
+  anti_join(donor_houses) %>%
+  anti_join(drop_donations) %>%
+  anti_join(random_miles)
+
+garage_monthly <-  garage_pantry_miles %>%
+  filter(month != "July") %>%
+  group_by(month) %>%
+  summarize(garage_miles = sum(Distance, na.rm = TRUE))
+
+#join the data, find totals
+mileage_table <- grocery_miles_monthly %>%
+  full_join(donor_miles_monthly, by = "month") %>%
+  full_join(dropping_donations_monthly, by = "month") %>%
+  full_join(random_monthly, by = "month") %>%
+  full_join(garage_monthly, by = "month") 
+
+ mileage_table[is.na(mileage_table)] = 0
+ mileage_table <- mileage_table %>%
+   rename(Month = month, Grocery = grocery_miles, `Pick-up` = donor_miles, `Drop-off` = dropping_miles, `Random` = random_miles, `Garage-pantry` = garage_miles) %>%
+   select(Month, Grocery, `Pick-up`, `Random`, `Garage-pantry`, `Drop-off`) %>%
+   adorn_totals("row")
+ 
+ mileage_table %>%
+   gt() %>%
+   tab_options(column_labels.font.weight = "bold")%>%
+   tab_style(
+    style = cell_fill(color = pastel_darker),
+    locations = cells_body(
+      rows = Month %in% c("November", "January", "March", "May", "Total"))) %>%
+  tab_style(
+    style = cell_fill(color = pastel_green),
+    locations = cells_body(
+      rows = Month %in% c("December", "February", "April", "June"))) %>%
+   tab_style(
+    style = list(
+      cell_text(weight = 750)
+    ),
+    locations = cells_body(
+      rows = 9)
+  )
 ```
 
