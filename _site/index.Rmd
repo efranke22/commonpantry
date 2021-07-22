@@ -347,7 +347,7 @@ This map shows the locations the Common Pantry van has driven between **November
 
 **Using this map:** \
 
-- **Zoom in and out** using the buttons in the upper left. \
+- **Zoom in and out** using the buttons in the upper left. If it gets out of whack, just reload the website. \
 
 - **Hover over the points** to see the name of each location\
 
