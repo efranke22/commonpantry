@@ -18,8 +18,8 @@ library(ggtext)
 library(janitor)
 library(gt)
 library(nationalparkcolors)
-library(patchwork)
-library(gridExtra)
+library(leaflet)
+library(gplots)        # for col2hex() function
 pal2 <- park_palette("Everglades")
 vans <- read_xlsx("../cpvandata.xlsx")
 
@@ -116,7 +116,7 @@ vans <- vans %>%
     Location == "First Slice" ~ -87.67353, 
     Location == "Jewel" ~ -87.68144, 
     Location == "Restaurant Depot" ~ -87.735429, 
-    Location == "Gas Station" ~ 87.68889, 
+    Location == "Gas Station" ~ -87.68889, 
     Location == "Ace Hardware" ~ -87.6768, 
     Location == "Salvation Army" ~ -87.6629, 
     Location == "Daily Harvest" ~ -87.64809, 
@@ -339,7 +339,50 @@ proportional_mileage
  prop_mileage_gt
 ```
 
-### Map of locations driven by van 
+<br />
 
+<span style='color:forestgreen; font-size:150%; font-weight:600'> Mapping the van's locations <span>
 
+This map shows the locations the Common Pantry van has driven between **November 2020 and July 8, 2021**. Almost all locations are shown expect for **donor houses** and a few others that I was not able to pinpoint the address of from the data. \
+
+**Using this map:** \
+
+- **Zoom in and out** using the buttons in the upper left. \
+
+- **Hover over the points** to see the name of each location\
+
+- **Click on points** to see the number of times the location has been visited by the van. Locations that have been visited more than **5 times** are shown in <span style='color:goldenrod; font-size:100%; font-weight:500'>yellow<span>. 
+
+```{r, echo=FALSE}
+vans_leaflet <- vans %>%
+  filter(!is.na(Latitude)) %>%
+  select(Location, Latitude, Longitude) %>%
+  mutate(popular_location = case_when(
+    Location %in% c("Pantry", "Garage", "Harvestime", "Aldi", "Jewel") ~ TRUE, 
+    TRUE ~ FALSE))
+
+factcolors <- colorFactor(col2hex(c("mediumseagreen", "goldenrod1")), vans_leaflet$popular_location)
+
+times_visited <- vans_leaflet %>%
+  group_by(Location) %>%
+  count()
+
+vans_leaflet <- vans_leaflet %>%
+  left_join(times_visited, by = "Location")
+
+leaflet(data = vans_leaflet) %>% 
+  addProviderTiles(providers$Stamen.Terrain) %>% 
+  addCircles(lng = ~Longitude, 
+             lat = ~Latitude, 
+             label = ~Location, 
+             weight = 10, 
+             opacity = 0.5, 
+             color = ~factcolors(popular_location), 
+             popup = ~paste(vans_leaflet$Location, "<br>",
+                            "Times Visited:", vans_leaflet$n))
+```
+
+Thanks so much for learning about Common Pantry's van data! \
+
+Please reach out to Common Pantry with any questions on the van and/or to make a donation. With questions about this website, please contact Erin Franke at efranke@macalester.edu.
 
