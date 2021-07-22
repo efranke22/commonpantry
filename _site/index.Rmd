@@ -17,6 +17,10 @@ library(ggthemes)
 library(ggtext)
 library(janitor)
 library(gt)
+library(nationalparkcolors)
+library(patchwork)
+library(gridExtra)
+pal2 <- park_palette("Everglades")
 vans <- read_xlsx("../cpvandata.xlsx")
 
 hsv2rgb <- function(x){  
@@ -139,6 +143,19 @@ vans <- vans %>%
 vans$month = factor(vans$month, levels=c("November","December","January", "February", "March", "April", "May", "June", "July"), labels=c("November","December","January", "February", "March", "April", "May", "June", "July"))
 ```
 
+Hi! This page is meant to summarize Common Pantry's van usage. Between **November 2020** and **July 8, 2021**, the Common Pantry van has been driven **620.8** miles (and there are **1791.7** miles on the van total). We will look at the data from November through the end of June, during which the van has traveled **603** miles.
+
+```{r, include = FALSE}
+#van mileage
+vans %>%
+  summarize(sum(Distance, na.rm = TRUE))
+
+#van mileage - July
+vans %>%
+  filter(month !="July") %>%
+  summarize(sum(Distance, na.rm = TRUE))
+```
+
 <span style='color:forestgreen; font-size:150%; font-weight:600'> Common Pantry Van Miles per Month <span>
 
 Common Pantry's van traveled the most miles in **March** and **May 2021** with over 100 miles each month. **35.5** of the **101.9** miles in March came from a trip to and from **Winnetka Congregational Church** for a donation pickup. **73.1** of the **118.5** miles driven in May resulted from traveling to and from **Matteson Prairie**. 
@@ -169,10 +186,10 @@ vans %>%
   filter(Date <= "2021-06-30", 
          Location != "Matteson Prairie", 
          `Prior Location` != "Matteson Prairie", 
-         Location != "WCC", 
+         Location != "WCC - Winnetka", 
          `Prior Location` != "WCC - Winnetka") %>%
   group_by(month)%>%
-  summarize(miles_driven = round(sum(Distance, na.rm = TRUE), 1)) %>% #mean miles: 64.08
+  summarize(miles_driven = round(sum(Distance, na.rm = TRUE), 1)) %>% #mean miles: 61.8
   ggplot(aes(x=month, y=miles_driven)) +
   geom_col(fill = "forestgreen")+
   geom_text(aes(label = miles_driven), size = 3, hjust = 0.5, vjust = 3, position = "stack", color = "white")+
@@ -182,30 +199,14 @@ vans %>%
         plot.title = element_markdown(family = "mono", face = "bold", size = 14, color = "forestgreen"), 
         panel.grid.major.x = element_blank(), 
         panel.grid.minor.x = element_blank()) +
-  annotate(geom="text",x="May", y=77,label="average mileage \nper month: 64.08", family = "mono", fontface="bold", cex = 3.5, color = "forestgreen")
+  annotate(geom="text",x="May", y=77,label="average mileage \nper month: 61.8", family = "mono", fontface="bold", cex = 3.5, color = "forestgreen")
 ```
-
-<span style='color:forestgreen; font-size:150%; font-weight:600'> Van Total Mileage <span>
-
-```{r, include = FALSE}
-#van mileage
-vans %>%
-  summarize(sum(Distance, na.rm = TRUE))
-
-#van mileage - July
-vans %>%
-  filter(month !="July") %>%
-  summarize(sum(Distance, na.rm = TRUE))
-```
-
-Between **November 2020** and **July 8, 2021**, the Common Pantry van has been driven **620.8** miles (and there are **1791.7** miles on the van total). 
-Excluding the eight days in July, the van has been driven **603** miles. 
 
 <span style='color:forestgreen; font-size:150%; font-weight:600'> Mileage Breakdown <span>
 
-We break down these miles into the following categories in the table below: 
+You may be wondering what these 600+ miles were driven for. It is broken down visually in the graph below.
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, fig.align = 'center'}
 '%!in%' <- Negate('%in%')
 
 #grocery miles - 216.7 miles
@@ -226,7 +227,8 @@ grocery_miles_monthly <- to_from_grocery %>%
 
 #miles too and from donor houses/to pick up donations and our products (lunch for volunteers, pies for clients, etc)
 donor_houses <- vans %>% anti_join(to_from_grocery) %>%
-  filter(Location %in% c("Donor House", "Tiny Giants", "Ravenswood Elementary", "WCC - Winnetka", "Chui's Grocery", "Cradles 2 Crayons", "Daily Harvest", "First Slice", "Restaurant Depot", "Restaurant", "Volo Restaurant", "Share Our Spare", "MMCG") |  `Prior Location` %in% c("Donor House", "Daily Harvest", "Cradles 2 Crayons", "Ravenswood Elementary", "WCC - Winnetka", "Chui's Grocery", "First Slice", "Restaurant Depot", "Restaurant", "Volo Restaurant", "Share Our Spare", "MMCG"))
+  filter(Location %in% c("Donor House", "Tiny Giants", "Ravenswood Elementary", "WCC - Winnetka", "Chui's Grocery", "Cradles 2 Crayons", "Daily Harvest", "First Slice", "Restaurant Depot", "Restaurant", "Volo Restaurant", "Share Our Spare", "MMCG") |  `Prior Location` %in% c("Donor House", "Daily Harvest", "Cradles 2 Crayons", "Ravenswood Elementary", "WCC - Winnetka", "Chui's Grocery", "First Slice", "Restaurant Depot", "Restaurant", "Volo Restaurant", "Share Our Spare", "MMCG")) %>%
+  filter(`Van Mileage` %!in% c(1576.7, 1580.6))
 
 donor_miles_monthly <- donor_houses %>%
   filter(month != "July") %>%
@@ -237,8 +239,8 @@ donor_miles_monthly <- donor_houses %>%
 drop_donations <- vans %>% 
   anti_join(to_from_grocery) %>% 
   anti_join(donor_houses) %>%
-  filter(Location %in% c("Salvation Army", "Friendship Center", "RCS", "Concordia", "Swedish")| 
-         `Prior Location` %in% c("Salvation Army", "Friendship Center", "RCS", "Concordia", "Swedish"))
+  filter(Location %in% c("Salvation Army", "Friendship Center", "RCS", "Concordia", "Swedish", "Cradles 2 Crayons")| 
+         `Prior Location` %in% c("Salvation Army", "Friendship Center", "RCS", "Concordia", "Swedish", "Cradles 2 Crayons"))
 
 dropping_donations_monthly <- drop_donations %>%
   filter(month != "July") %>%
@@ -283,8 +285,40 @@ mileage_table <- grocery_miles_monthly %>%
    rename(Month = month, Grocery = grocery_miles, `Pick-up` = donor_miles, `Drop-off` = dropping_miles, `Random` = random_miles, `Garage-pantry` = garage_miles) %>%
    select(Month, Grocery, `Pick-up`, `Random`, `Garage-pantry`, `Drop-off`) %>%
    adorn_totals("row")
- 
- mileage_table %>%
+
+mileage_table$Month = factor(mileage_table$Month, levels=c("November","December","January", "February", "March", "April", "May", "June", "July", "Total"), labels=c("November","December","January", "February", "March", "April", "May", "June", "July", "Total"))
+
+proportional_mileage <- mileage_table %>%
+  head(8) %>%
+  pivot_longer(cols = c(Grocery, `Pick-up`, `Random`, `Garage-pantry`, `Drop-off`), names_to = "drive_category", values_to = "miles") %>%
+  ggplot(aes(x = Month, y = miles, fill = drive_category))+
+  geom_col(position = "fill")+
+  scale_fill_manual(values = pal2)+
+  labs(x = "", y= "", title = "Van mileage purpose propoprtionally", fill = "")+
+  theme_minimal()+
+  theme(plot.title.position = "plot", 
+        plot.title = element_markdown(family = "mono", face = "bold", size = 14, color = "forestgreen"), 
+        panel.grid.major.x = element_blank(), 
+        panel.grid.minor.x = element_blank(), 
+        panel.grid.major.y = element_blank(), 
+        panel.grid.minor.y = element_blank())
+proportional_mileage
+```
+
+##### Here is what each category represents. Additionally, check out the table below for the exact monthly mileages to and from each destination category. 
+
+**Grocery**: miles driven to and from Aldi, Harvestime, Jewel, and Whole Foods \
+
+**Pick-up**: miles driven to pick up donations from donor homes and organizations (such as Cradles 2 Crayons, Ravenswood Elementary, Share Our Spare, and more), as well as to pick up additional items for clients (for example, First Slice, Restaurant Depot, and Metro Montrose Community Gardens). 
+
+**Random**: this counts mileage for several random trips the van was used for, including to and from Staples, Ace Hardware, Matteson Prairie, the car wash, and any trips with a missing location. 
+
+**Garage-pantry**: solely counts the mileage the van traveled between Common Pantry and the garage. 
+
+**Drop-off**: miles driven to drop of donations. This includes Salvation Army, Friendship Center, RCS, Concordia, Swedish, and more.
+
+```{r, echo = FALSE}
+ prop_mileage_gt <- mileage_table %>%
    gt() %>%
    tab_options(column_labels.font.weight = "bold")%>%
    tab_style(
@@ -301,6 +335,11 @@ mileage_table <- grocery_miles_monthly %>%
     ),
     locations = cells_body(
       rows = 9)
-  )
+  ) 
+ prop_mileage_gt
 ```
+
+### Map of locations driven by van 
+
+
 
